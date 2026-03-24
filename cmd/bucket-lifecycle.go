@@ -39,7 +39,6 @@ import (
 	"github.com/fedminio/server/internal/bucket/lifecycle"
 	"github.com/fedminio/server/internal/event"
 	xhttp "github.com/fedminio/server/internal/http"
-	"github.com/fedminio/server/internal/logger"
 	"github.com/fedminio/server/internal/s3select"
 	xnet "github.com/minio/pkg/v3/net"
 	"github.com/zeebo/xxh3"
@@ -114,10 +113,9 @@ type expiryTask struct {
 
 // expiryStats records metrics related to ILM expiry activities
 type expiryStats struct {
-	missedExpiryTasks      atomic.Int64
-	missedFreeVersTasks    atomic.Int64
-	missedTierJournalTasks atomic.Int64
-	workers                atomic.Int32
+	missedExpiryTasks   atomic.Int64
+	missedFreeVersTasks atomic.Int64
+	workers             atomic.Int32
 }
 
 // MissedTasks returns the number of ILM expiry tasks that were missed since
@@ -130,12 +128,6 @@ func (e *expiryStats) MissedTasks() int64 {
 // were missed since there were no available workers.
 func (e *expiryStats) MissedFreeVersTasks() int64 {
 	return e.missedFreeVersTasks.Load()
-}
-
-// MissedTierJournalTasks returns the number of tasks to remove tiered objects
-// that were missed since there were no available workers.
-func (e *expiryStats) MissedTierJournalTasks() int64 {
-	return e.missedTierJournalTasks.Load()
 }
 
 // NumWorkers returns the number of active workers executing one of ILM expiry
@@ -158,10 +150,6 @@ func (f freeVersionTask) OpHash() uint64 {
 
 func (n noncurrentVersionsTask) OpHash() uint64 {
 	return xxh3.HashString(n.bucket + n.versions[0].ObjectName)
-}
-
-func (j jentry) OpHash() uint64 {
-	return xxh3.HashString(j.TierName + j.ObjName)
 }
 
 func (e expiryTask) OpHash() uint64 {
@@ -190,23 +178,6 @@ func (es *expiryState) PendingTasks() int {
 		tasks += len(wrkr)
 	}
 	return tasks
-}
-
-// enqueueTierJournalEntry enqueues a tier journal entry referring to a remote
-// object corresponding to a 'replaced' object versions. This applies only to
-// non-versioned or version suspended buckets.
-func (es *expiryState) enqueueTierJournalEntry(je jentry) {
-	wrkr := es.getWorkerCh(je.OpHash())
-	if wrkr == nil {
-		es.stats.missedTierJournalTasks.Add(1)
-		return
-	}
-	select {
-	case <-GlobalContext.Done():
-	case wrkr <- je:
-	default:
-		es.stats.missedTierJournalTasks.Add(1)
-	}
 }
 
 // enqueueFreeVersion enqueues a free version to be deleted
@@ -352,8 +323,6 @@ func (es *expiryState) Worker(input <-chan expiryOp) {
 				}
 			case noncurrentVersionsTask:
 				deleteObjectVersions(es.ctx, es.objAPI, v.bucket, v.versions, v.events)
-			case jentry:
-				transitionLogIf(es.ctx, deleteObjectFromRemoteTier(es.ctx, v.ObjName, v.VersionID, v.TierName))
 			case freeVersionTask:
 				oi := v.ObjectInfo
 				traceFn := globalLifecycleSys.trace(oi)
@@ -369,16 +338,9 @@ func (es *expiryState) Worker(input <-chan expiryOp) {
 					}
 					return err
 				}
-				// Remove the remote object
-				err := deleteObjectFromRemoteTier(es.ctx, oi.TransitionedObject.Name, oi.TransitionedObject.VersionID, oi.TransitionedObject.Tier)
-				if ignoreNotFoundErr(err) != nil {
-					transitionLogIf(es.ctx, err)
-					traceFn(ILMFreeVersionDelete, nil, err)
-					continue
-				}
 
 				// Remove this free version
-				_, err = es.objAPI.DeleteObject(es.ctx, oi.Bucket, oi.Name, ObjectOptions{
+				_, err := es.objAPI.DeleteObject(es.ctx, oi.Bucket, oi.Name, ObjectOptions{
 					VersionID:        oi.VersionID,
 					InclFreeVersions: true,
 				})
@@ -422,9 +384,6 @@ type transitionState struct {
 
 	activeTasks          atomic.Int64
 	missedImmediateTasks atomic.Int64
-
-	lastDayMu    sync.RWMutex
-	lastDayStats map[string]*lastDayTierStats
 }
 
 func (t *transitionState) queueTransitionTask(oi ObjectInfo, event lifecycle.Event, src lcEventSrc) {
@@ -448,9 +407,8 @@ var globalTransitionState *transitionState
 func newTransitionState(ctx context.Context) *transitionState {
 	return &transitionState{
 		transitionCh: make(chan transitionTask, 100000),
-		ctx:          ctx,
-		killCh:       make(chan struct{}),
-		lastDayStats: make(map[string]*lastDayTierStats),
+		ctx:    ctx,
+		killCh: make(chan struct{}),
 	}
 }
 
@@ -506,40 +464,10 @@ func (t *transitionState) worker(objectAPI ObjectLayer) {
 							task.event.StorageClass, task.objInfo.Bucket, task.objInfo.Name, task.objInfo.VersionID, err))
 					}
 				}
-			} else {
-				ts := tierStats{
-					TotalSize:   uint64(task.objInfo.Size),
-					NumVersions: 1,
-				}
-				if task.objInfo.IsLatest {
-					ts.NumObjects = 1
-				}
-				t.addLastDayStats(task.event.StorageClass, ts)
 			}
 			t.activeTasks.Add(-1)
 		}
 	}
-}
-
-func (t *transitionState) addLastDayStats(tier string, ts tierStats) {
-	t.lastDayMu.Lock()
-	defer t.lastDayMu.Unlock()
-
-	if _, ok := t.lastDayStats[tier]; !ok {
-		t.lastDayStats[tier] = &lastDayTierStats{}
-	}
-	t.lastDayStats[tier].addStats(ts)
-}
-
-func (t *transitionState) getDailyAllTierStats() DailyAllTierStats {
-	t.lastDayMu.RLock()
-	defer t.lastDayMu.RUnlock()
-
-	res := make(DailyAllTierStats, len(t.lastDayStats))
-	for tier, st := range t.lastDayStats {
-		res[tier] = st.clone()
-	}
-	return res
 }
 
 // UpdateWorkers at the end of this function leaves n goroutines waiting for
@@ -573,15 +501,8 @@ var errInvalidStorageClass = errors.New("invalid storage class")
 
 func validateTransitionTier(lc *lifecycle.Lifecycle) error {
 	for _, rule := range lc.Rules {
-		if rule.Transition.StorageClass != "" {
-			if valid := globalTierConfigMgr.IsTierValid(rule.Transition.StorageClass); !valid {
-				return errInvalidStorageClass
-			}
-		}
-		if rule.NoncurrentVersionTransition.StorageClass != "" {
-			if valid := globalTierConfigMgr.IsTierValid(rule.NoncurrentVersionTransition.StorageClass); !valid {
-				return errInvalidStorageClass
-			}
+		if rule.Transition.StorageClass != "" || rule.NoncurrentVersionTransition.StorageClass != "" {
+			return errInvalidStorageClass
 		}
 	}
 	return nil
@@ -629,16 +550,6 @@ func expireTransitionedObject(ctx context.Context, objectAPI ObjectLayer, oi *Ob
 			auditLogLifecycle(ctx, *oi, ILMExpiry, tags, traceFn)
 		}
 		return err
-	}
-
-	// Delete remote object from warm-tier
-	err := deleteObjectFromRemoteTier(ctx, oi.TransitionedObject.Name, oi.TransitionedObject.VersionID, oi.TransitionedObject.Tier)
-	if err == nil {
-		// Skip adding free version since we successfully deleted the
-		// remote object
-		opts.SkipFreeVersion = true
-	} else {
-		transitionLogIf(ctx, err)
 	}
 
 	// Now, delete object from hot-tier namespace
@@ -710,73 +621,9 @@ func transitionObject(ctx context.Context, objectAPI ObjectLayer, oi ObjectInfo,
 	return objectAPI.TransitionObject(ctx, oi.Bucket, oi.Name, opts)
 }
 
-type auditTierOp struct {
-	Tier             string `json:"tier"`
-	TimeToResponseNS int64  `json:"timeToResponseNS"`
-	OutputBytes      int64  `json:"tx,omitempty"`
-	Error            string `json:"error,omitempty"`
-}
-
-func (op auditTierOp) String() string {
-	// flattening the auditTierOp{} for audit
-	return fmt.Sprintf("tier:%s,respNS:%d,tx:%d,err:%s", op.Tier, op.TimeToResponseNS, op.OutputBytes, op.Error)
-}
-
-func auditTierActions(ctx context.Context, tier string, bytes int64) func(err error) {
-	startTime := time.Now()
-	return func(err error) {
-		// Record only when audit targets configured.
-		if len(logger.AuditTargets()) == 0 {
-			return
-		}
-
-		op := auditTierOp{
-			Tier:        tier,
-			OutputBytes: bytes,
-		}
-
-		if err == nil {
-			since := time.Since(startTime)
-			op.TimeToResponseNS = since.Nanoseconds()
-			globalTierMetrics.Observe(tier, since)
-			globalTierMetrics.logSuccess(tier)
-		} else {
-			op.Error = err.Error()
-			globalTierMetrics.logFailure(tier)
-		}
-
-		logger.GetReqInfo(ctx).AppendTags("tierStats", op.String())
-	}
-}
-
-// getTransitionedObjectReader returns a reader from the transitioned tier.
+// getTransitionedObjectReader is not supported without warm storage backends.
 func getTransitionedObjectReader(ctx context.Context, bucket, object string, rs *HTTPRangeSpec, h http.Header, oi ObjectInfo, opts ObjectOptions) (gr *GetObjectReader, err error) {
-	tgtClient, err := globalTierConfigMgr.getDriver(ctx, oi.TransitionedObject.Tier)
-	if err != nil {
-		return nil, fmt.Errorf("transition storage class not configured: %w", err)
-	}
-
-	fn, off, length, err := NewGetObjectReader(rs, oi, opts, h)
-	if err != nil {
-		return nil, ErrorRespToObjectError(err, bucket, object)
-	}
-	gopts := WarmBackendGetOpts{}
-
-	// get correct offsets for object
-	if off >= 0 && length >= 0 {
-		gopts.startOffset = off
-		gopts.length = length
-	}
-
-	timeTierAction := auditTierActions(ctx, oi.TransitionedObject.Tier, length)
-	reader, err := tgtClient.Get(ctx, oi.TransitionedObject.Name, remoteVersionID(oi.TransitionedObject.VersionID), gopts)
-	if err != nil {
-		return nil, err
-	}
-	closer := func() {
-		timeTierAction(reader.Close())
-	}
-	return fn(reader, h, closer)
+	return nil, fmt.Errorf("transition storage class not configured")
 }
 
 // RestoreRequestType represents type of restore.

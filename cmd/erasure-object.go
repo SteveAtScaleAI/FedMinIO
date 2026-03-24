@@ -31,19 +31,16 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/klauspost/readahead"
-	"github.com/minio/madmin-go/v3"
 	"github.com/minio/minio-go/v7/pkg/tags"
 	"github.com/fedminio/server/internal/bucket/lifecycle"
 	"github.com/fedminio/server/internal/bucket/object/lock"
 	"github.com/fedminio/server/internal/bucket/replication"
 	"github.com/fedminio/server/internal/config/storageclass"
 	"github.com/fedminio/server/internal/crypto"
-	"github.com/fedminio/server/internal/event"
 	"github.com/fedminio/server/internal/grid"
 	"github.com/fedminio/server/internal/hash"
 	xhttp "github.com/fedminio/server/internal/http"
@@ -2346,112 +2343,9 @@ func (er erasureObjects) GetObjectTags(ctx context.Context, bucket, object strin
 	return tags.ParseObjectTags(oi.UserTags)
 }
 
-// TransitionObject - transition object content to target tier.
+// TransitionObject - not supported; no warm storage backends configured.
 func (er erasureObjects) TransitionObject(ctx context.Context, bucket, object string, opts ObjectOptions) error {
-	tgtClient, err := globalTierConfigMgr.getDriver(ctx, opts.Transition.Tier)
-	if err != nil {
-		return err
-	}
-
-	if !opts.NoLock {
-		// Acquire write lock before starting to transition the object.
-		lk := er.NewNSLock(bucket, object)
-		lkctx, err := lk.GetLock(ctx, globalDeleteOperationTimeout)
-		if err != nil {
-			return err
-		}
-		ctx = lkctx.Context()
-		defer lk.Unlock(lkctx)
-	}
-
-	fi, metaArr, onlineDisks, err := er.getObjectFileInfo(ctx, bucket, object, opts, true)
-	if err != nil {
-		return toObjectErr(err, bucket, object)
-	}
-	if fi.Deleted {
-		if opts.VersionID == "" {
-			return toObjectErr(errFileNotFound, bucket, object)
-		}
-		// Make sure to return object info to provide extra information.
-		return toObjectErr(errMethodNotAllowed, bucket, object)
-	}
-	// verify that the object queued for transition is identical to that on disk.
-	if !opts.MTime.Equal(fi.ModTime) || !strings.EqualFold(opts.Transition.ETag, extractETag(fi.Metadata)) {
-		return toObjectErr(errFileNotFound, bucket, object)
-	}
-	// if object already transitioned, return
-	if fi.TransitionStatus == lifecycle.TransitionComplete {
-		return nil
-	}
-
-	if fi.XLV1 {
-		if _, err = er.HealObject(ctx, bucket, object, "", madmin.HealOpts{NoLock: true}); err != nil {
-			return err
-		}
-		// Fetch FileInfo again. HealObject migrates object the latest
-		// format. Among other things this changes fi.DataDir and
-		// possibly fi.Data (if data is inlined).
-		fi, metaArr, onlineDisks, err = er.getObjectFileInfo(ctx, bucket, object, opts, true)
-		if err != nil {
-			return toObjectErr(err, bucket, object)
-		}
-	}
-	traceFn := globalLifecycleSys.trace(fi.ToObjectInfo(bucket, object, opts.Versioned || opts.VersionSuspended))
-
-	destObj, err := genTransitionObjName(bucket)
-	if err != nil {
-		traceFn(ILMTransition, nil, err)
-		return err
-	}
-
-	pr, pw := xioutil.WaitPipe()
-	go func() {
-		err := er.getObjectWithFileInfo(ctx, bucket, object, 0, fi.Size, pw, fi, metaArr, onlineDisks)
-		pw.CloseWithError(err)
-	}()
-
-	var rv remoteVersionID
-	rv, err = tgtClient.PutWithMeta(ctx, destObj, pr, fi.Size, map[string]string{
-		"name": object, // preserve the original name of the object on the remote tier object metadata.
-		// this is just for future reverse lookup() purposes (applies only for new objects)
-		// does not apply retro-actively on already transitioned objects.
-	})
-	pr.CloseWithError(err)
-	if err != nil {
-		traceFn(ILMTransition, nil, err)
-		return err
-	}
-	fi.TransitionStatus = lifecycle.TransitionComplete
-	fi.TransitionedObjName = destObj
-	fi.TransitionTier = opts.Transition.Tier
-	fi.TransitionVersionID = string(rv)
-	eventName := event.ObjectTransitionComplete
-
-	storageDisks := er.getDisks()
-
-	if err = er.deleteObjectVersion(ctx, bucket, object, fi, false); err != nil {
-		eventName = event.ObjectTransitionFailed
-	}
-
-	for _, disk := range storageDisks {
-		if disk != nil && disk.IsOnline() {
-			continue
-		}
-		er.addPartial(bucket, object, opts.VersionID)
-		break
-	}
-
-	objInfo := fi.ToObjectInfo(bucket, object, opts.Versioned || opts.VersionSuspended)
-	sendEvent(eventArgs{
-		EventName:  eventName,
-		BucketName: bucket,
-		Object:     objInfo,
-		UserAgent:  "Internal: [ILM-Transition]",
-		Host:       globalLocalNodeName,
-	})
-	tags := opts.LifecycleAuditEvent.Tags()
-	auditLogLifecycle(ctx, objInfo, ILMTransition, tags, traceFn)
-	return err
+	return fmt.Errorf("transition storage class not configured")
 }
 
 // RestoreTransitionedObject - restore transitioned object content locally on this cluster.

@@ -367,15 +367,6 @@ func registerAdminRouter(router *mux.Router, enableConfigOps bool) {
 		adminRouter.Methods(http.MethodPut).Path(adminVersion + "/import-bucket-metadata").HandlerFunc(
 			adminMiddleware(adminAPI.ImportBucketMetadataHandler))
 
-		// Remote Tier management operations
-		adminRouter.Methods(http.MethodPut).Path(adminVersion + "/tier").HandlerFunc(adminMiddleware(adminAPI.AddTierHandler))
-		adminRouter.Methods(http.MethodPost).Path(adminVersion + "/tier/{tier}").HandlerFunc(adminMiddleware(adminAPI.EditTierHandler))
-		adminRouter.Methods(http.MethodGet).Path(adminVersion + "/tier").HandlerFunc(adminMiddleware(adminAPI.ListTierHandler))
-		adminRouter.Methods(http.MethodDelete).Path(adminVersion + "/tier/{tier}").HandlerFunc(adminMiddleware(adminAPI.RemoveTierHandler))
-		adminRouter.Methods(http.MethodGet).Path(adminVersion + "/tier/{tier}").HandlerFunc(adminMiddleware(adminAPI.VerifyTierHandler))
-		// Tier stats
-		adminRouter.Methods(http.MethodGet).Path(adminVersion + "/tier-stats").HandlerFunc(adminMiddleware(adminAPI.TierStatsHandler))
-
 		// Cluster Replication APIs
 		adminRouter.Methods(http.MethodPut).Path(adminVersion + "/site-replication/add").HandlerFunc(adminMiddleware(adminAPI.SiteReplicationAdd))
 		adminRouter.Methods(http.MethodPut).Path(adminVersion + "/site-replication/remove").HandlerFunc(adminMiddleware(adminAPI.SiteReplicationRemove))

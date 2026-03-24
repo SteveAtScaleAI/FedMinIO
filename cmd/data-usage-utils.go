@@ -18,7 +18,6 @@
 package cmd
 
 import (
-	"sort"
 	"time"
 
 	"github.com/minio/madmin-go/v3"
@@ -108,36 +107,7 @@ type DataUsageInfo struct {
 }
 
 func (dui DataUsageInfo) tierStats() []madmin.TierInfo {
-	if dui.TierStats == nil {
-		return nil
-	}
-
-	if globalTierConfigMgr.Empty() {
-		return nil
-	}
-
-	ts := make(map[string]madmin.TierStats)
-	dui.TierStats.populateStats(ts)
-
-	infos := make([]madmin.TierInfo, 0, len(ts))
-	for tier, stats := range ts {
-		infos = append(infos, madmin.TierInfo{
-			Name:  tier,
-			Type:  globalTierConfigMgr.TierType(tier),
-			Stats: stats,
-		})
-	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		if infos[i].Type == "internal" {
-			return true
-		}
-		if infos[j].Type == "internal" {
-			return false
-		}
-		return infos[i].Name < infos[j].Name
-	})
-	return infos
+	return nil
 }
 
 func (dui DataUsageInfo) tierMetrics() (metrics []MetricV2) {

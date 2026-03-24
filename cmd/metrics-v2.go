@@ -1947,7 +1947,7 @@ func getTierMetrics() *MetricsGroupV2 {
 		cacheInterval: 10 * time.Second,
 	}
 	mg.RegisterRead(func(ctx context.Context) []MetricV2 {
-		return globalTierMetrics.Report()
+		return nil
 	})
 	return mg
 }
@@ -2068,15 +2068,6 @@ func getILMNodeMetrics() *MetricsGroupV2 {
 				Type:      counterMetric,
 			},
 		}
-		expMissedTierJournalTasks := MetricV2{
-			Description: MetricDescription{
-				Namespace: nodeMetricNamespace,
-				Subsystem: ilmSubsystem,
-				Name:      expiryMissedTierJournalTasks,
-				Help:      "Number of tier journal entries cleanup missed due to busy system",
-				Type:      counterMetric,
-			},
-		}
 		expNumWorkers := MetricV2{
 			Description: MetricDescription{
 				Namespace: nodeMetricNamespace,
@@ -2099,7 +2090,6 @@ func getILMNodeMetrics() *MetricsGroupV2 {
 			expPendingTasks.Value = float64(globalExpiryState.PendingTasks())
 			expMissedTasks.Value = float64(globalExpiryState.stats.MissedTasks())
 			expMissedFreeVersions.Value = float64(globalExpiryState.stats.MissedFreeVersTasks())
-			expMissedTierJournalTasks.Value = float64(globalExpiryState.stats.MissedTierJournalTasks())
 			expNumWorkers.Value = float64(globalExpiryState.stats.NumWorkers())
 		}
 		if globalTransitionState != nil {
@@ -2111,7 +2101,6 @@ func getILMNodeMetrics() *MetricsGroupV2 {
 			expPendingTasks,
 			expMissedTasks,
 			expMissedFreeVersions,
-			expMissedTierJournalTasks,
 			expNumWorkers,
 			trPendingTasks,
 			trActiveTasks,
@@ -3496,10 +3485,6 @@ func getClusterTierMetrics(opts MetricsGroupOpts) *MetricsGroupV2 {
 	}
 	mg.RegisterRead(func(ctx context.Context) (metrics []MetricV2) {
 		objLayer := newObjectLayerFn()
-
-		if globalTierConfigMgr.Empty() {
-			return metrics
-		}
 
 		dui, err := loadDataUsageFromBackend(ctx, objLayer)
 		if err != nil {

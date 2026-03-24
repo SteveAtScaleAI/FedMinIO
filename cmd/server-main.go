@@ -475,10 +475,6 @@ func initAllSubsystems(ctx context.Context) {
 	// Create new bucket replication subsystem
 	globalBucketTargetSys = NewBucketTargetSys(GlobalContext)
 
-	// Create new ILM tier configuration subsystem
-	globalTierConfigMgr = NewTierConfigMgr()
-
-	globalTransitionState = newTransitionState(GlobalContext)
 	globalSiteResyncMetrics = newSiteResyncMetrics(GlobalContext)
 }
 
@@ -1022,18 +1018,6 @@ func serverMain(ctx *cli.Context) {
 			initBackgroundExpiry(GlobalContext, newObject)
 		})
 
-		bootstrapTrace("globalTransitionState.Init", func() {
-			globalTransitionState.Init(newObject)
-		})
-
-		go func() {
-			// Initialize transition tier configuration manager
-			bootstrapTrace("globalTierConfigMgr.Init", func() {
-				if err := globalTierConfigMgr.Init(GlobalContext, newObject); err != nil {
-					bootLogIf(GlobalContext, err)
-				}
-			})
-		}()
 
 		// Initialize bucket notification system.
 		bootstrapTrace("initBucketTargets", func() {

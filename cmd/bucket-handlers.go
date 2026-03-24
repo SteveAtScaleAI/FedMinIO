@@ -497,7 +497,6 @@ func (api objectAPIHandlers) DeleteMultipleObjectsHandler(w http.ResponseWriter,
 	deleteResults := make([]deleteResult, len(deleteObjectsReq.Objects))
 
 	vc, _ := globalBucketVersioningSys.Get(bucket)
-	oss := make([]*objSweeper, len(deleteObjectsReq.Objects))
 	for index, object := range deleteObjectsReq.Objects {
 		if apiErrCode := checkRequestAuthTypeWithVID(ctx, r, policy.DeleteObjectAction, bucket, object.ObjectName, object.VersionID); apiErrCode != ErrNone {
 			if apiErrCode == ErrSignatureDoesNotMatch || apiErrCode == ErrInvalidAccessKeyID {
@@ -532,16 +531,8 @@ func (api objectAPIHandlers) DeleteMultipleObjectsHandler(w http.ResponseWriter,
 			VersionSuspended: vc.Suspended(),
 		}
 
-		if replicateDeletes || object.VersionID != "" && hasLockEnabled || !globalTierConfigMgr.Empty() {
-			if !globalTierConfigMgr.Empty() && object.VersionID == "" && opts.VersionSuspended {
-				opts.VersionID = nullVersionID
-			}
+		if replicateDeletes || object.VersionID != "" && hasLockEnabled {
 			goi, gerr = getObjectInfoFn(ctx, bucket, object.ObjectName, opts)
-		}
-
-		if !globalTierConfigMgr.Empty() {
-			oss[index] = newObjSweeper(bucket, object.ObjectName).WithVersion(opts.VersionID).WithVersioning(opts.Versioned, opts.VersionSuspended)
-			oss[index].SetTransitionState(goi.TransitionedObject)
 		}
 
 		// All deletes on directory objects needs to be for `nullVersionID`
@@ -705,13 +696,6 @@ func (api objectAPIHandlers) DeleteMultipleObjectsHandler(w http.ResponseWriter,
 		})
 	}
 
-	// Clean up transitioned objects from remote tier
-	for _, os := range oss {
-		if os == nil { // skip objects that weren't deleted due to invalid versionID etc.
-			continue
-		}
-		os.Sweep()
-	}
 }
 
 // PutBucketHandler - PUT Bucket

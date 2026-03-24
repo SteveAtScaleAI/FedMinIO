@@ -24,7 +24,6 @@ import (
 	"net/http"
 
 	"github.com/minio/kms-go/kes"
-	"github.com/minio/madmin-go/v3"
 	"github.com/fedminio/server/internal/auth"
 	"github.com/fedminio/server/internal/config"
 	"github.com/minio/pkg/v3/policy"
@@ -185,43 +184,6 @@ func toAdminAPIErr(ctx context.Context, err error) APIError {
 				HTTPStatusCode: http.StatusConflict,
 			}
 
-		// Tier admin API errors
-		case errors.Is(err, madmin.ErrTierNameEmpty):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierNameEmpty",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
-		case errors.Is(err, madmin.ErrTierInvalidConfig):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierInvalidConfig",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
-		case errors.Is(err, madmin.ErrTierInvalidConfigVersion):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierInvalidConfigVersion",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
-		case errors.Is(err, madmin.ErrTierTypeUnsupported):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierTypeUnsupported",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
-		case errIsTierPermError(err):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierInsufficientPermissions",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
-		case errors.Is(err, errTierInvalidConfig):
-			apiErr = APIError{
-				Code:           "XMinioAdminTierInvalidConfig",
-				Description:    err.Error(),
-				HTTPStatusCode: http.StatusBadRequest,
-			}
 		default:
 			apiErr = errorCodes.ToAPIErrWithErr(toAdminAPIErrCode(ctx, err), err)
 		}

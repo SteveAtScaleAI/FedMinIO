@@ -981,15 +981,6 @@ func (api objectAPIHandlers) CompleteMultipartUploadHandler(w http.ResponseWrite
 
 	versioned := globalBucketVersioningSys.PrefixEnabled(bucket, object)
 	suspended := globalBucketVersioningSys.PrefixSuspended(bucket, object)
-	os := newObjSweeper(bucket, object).WithVersioning(versioned, suspended)
-	if !globalTierConfigMgr.Empty() {
-		// Get appropriate object info to identify the remote object to delete
-		goiOpts := os.GetOpts()
-		if goi, gerr := objectAPI.GetObjectInfo(ctx, bucket, object, goiOpts); gerr == nil {
-			os.SetTransitionState(goi.TransitionedObject)
-		}
-	}
-
 	opts, err := completeMultipartOpts(ctx, r, bucket, object)
 	if err != nil {
 		writeErrorResponse(ctx, w, toAPIError(ctx, err), r.URL)
@@ -1095,12 +1086,6 @@ func (api objectAPIHandlers) CompleteMultipartUploadHandler(w http.ResponseWrite
 		})
 	}
 
-	// Remove the transitioned object whose object version is being overwritten.
-	if !globalTierConfigMgr.Empty() {
-		// Schedule object for immediate transition if eligible.
-		enqueueTransitionImmediate(objInfo, lcEventSrc_s3CompleteMultipartUpload)
-		os.Sweep()
-	}
 }
 
 // AbortMultipartUploadHandler - Abort multipart upload

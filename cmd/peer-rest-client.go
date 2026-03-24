@@ -783,14 +783,6 @@ func (client *peerRESTClient) DriveSpeedTest(ctx context.Context, opts madmin.Dr
 	return result, nil
 }
 
-func (client *peerRESTClient) GetLastDayTierStats(ctx context.Context) (DailyAllTierStats, error) {
-	resp, err := getLastDayTierStatsRPC.Call(ctx, client.gridConn(), grid.NewMSS())
-	if err != nil || resp == nil {
-		return DailyAllTierStats{}, err
-	}
-	return *resp, nil
-}
-
 // DevNull - Used by netperf to pump data to peer
 func (client *peerRESTClient) DevNull(ctx context.Context, r io.Reader) error {
 	respBody, err := client.callWithContext(ctx, peerRESTMethodDevNull, nil, r, -1)

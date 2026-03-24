@@ -394,8 +394,6 @@ var (
 
 	globalForwarder *handlers.Forwarder
 
-	globalTierConfigMgr *TierConfigMgr
-
 	globalConsoleSrv *consoleapi.Server
 
 	// handles service freeze or un-freeze S3 API calls.

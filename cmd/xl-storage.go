@@ -629,16 +629,6 @@ func (s *xlStorage) NSScanner(ctx context.Context, cache dataUsageCache, updates
 			objInfos[i] = fi.ToObjectInfo(item.bucket, item.objectPath(), versioned)
 		}
 		sizeS := sizeSummary{}
-		for _, tier := range globalTierConfigMgr.ListTiers() {
-			if sizeS.tiers == nil {
-				sizeS.tiers = make(map[string]tierStats)
-			}
-			sizeS.tiers[tier.Name] = tierStats{}
-		}
-		if sizeS.tiers != nil {
-			sizeS.tiers[storageclass.STANDARD] = tierStats{}
-			sizeS.tiers[storageclass.RRS] = tierStats{}
-		}
 
 		if err != nil {
 			res["err"] = err.Error()

@@ -28,9 +28,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/fedminio/server/internal/ioutil"
-	"google.golang.org/api/googleapi"
 
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/minio-go/v7"
@@ -2566,24 +2564,6 @@ func toAPIError(ctx context.Context, err error) APIError {
 					HTTPStatusCode: http.StatusNotImplemented,
 				}
 			}
-		case *googleapi.Error:
-			apiErr = APIError{
-				Code:           "XGCSInternalError",
-				Description:    e.Message,
-				HTTPStatusCode: e.Code,
-			}
-			// GCS may send multiple errors, just pick the first one
-			// since S3 only sends one Error XML response.
-			if len(e.Errors) >= 1 {
-				apiErr.Code = e.Errors[0].Reason
-			}
-		case *azcore.ResponseError:
-			apiErr = APIError{
-				Code:           e.ErrorCode,
-				Description:    e.Error(),
-				HTTPStatusCode: e.StatusCode,
-			}
-			// Add more other SDK related errors here if any in future.
 		default:
 			//nolint:gocritic
 			if errors.Is(err, errMalformedEncoding) || errors.Is(err, errChunkTooBig) || errors.Is(err, strconv.ErrRange) {

@@ -80,7 +80,6 @@ var (
 	getBandwidthRPC                = grid.NewSingleHandler[*grid.URLValues, *bandwidth.BucketBandwidthReport](grid.HandlerGetBandwidth, grid.NewURLValues, func() *bandwidth.BucketBandwidthReport { return &bandwidth.BucketBandwidthReport{} })
 	getBucketStatsRPC              = grid.NewSingleHandler[*grid.MSS, *BucketStats](grid.HandlerGetBucketStats, grid.NewMSS, func() *BucketStats { return &BucketStats{} })
 	getCPUsHandler                 = grid.NewSingleHandler[*grid.MSS, *grid.JSON[madmin.CPUs]](grid.HandlerGetCPUs, grid.NewMSS, madminCPUs.NewJSON)
-	getLastDayTierStatsRPC         = grid.NewSingleHandler[*grid.MSS, *DailyAllTierStats](grid.HandlerGetLastDayTierStats, grid.NewMSS, func() *DailyAllTierStats { return &DailyAllTierStats{} })
 	getLocksRPC                    = grid.NewSingleHandler[*grid.MSS, *localLockMap](grid.HandlerGetLocks, grid.NewMSS, func() *localLockMap { return &localLockMap{} })
 	getMemInfoRPC                  = grid.NewSingleHandler[*grid.MSS, *grid.JSON[madmin.MemInfo]](grid.HandlerGetMemInfo, grid.NewMSS, madminMemInfo.NewJSON)
 	getMetacacheListingRPC         = grid.NewSingleHandler[*listPathOptions, *metacache](grid.HandlerGetMetacacheListing, func() *listPathOptions { return &listPathOptions{} }, func() *metacache { return &metacache{} })
@@ -969,18 +968,6 @@ func (s *peerRESTServer) LoadRebalanceMetaHandler(mss *grid.MSS) (np grid.NoPayl
 }
 
 func (s *peerRESTServer) LoadTransitionTierConfigHandler(mss *grid.MSS) (np grid.NoPayload, nerr *grid.RemoteErr) {
-	objAPI := newObjectLayerFn()
-	if objAPI == nil {
-		return np, grid.NewRemoteErr(errServerNotInitialized)
-	}
-
-	go func() {
-		err := globalTierConfigMgr.Reload(context.Background(), newObjectLayerFn())
-		if err != nil {
-			peersLogIf(context.Background(), fmt.Errorf("Failed to reload remote tier config %s", err))
-		}
-	}()
-
 	return np, nerr
 }
 
@@ -1138,16 +1125,6 @@ func (s *peerRESTServer) SpeedTestHandler(w http.ResponseWriter, r *http.Request
 
 	done(nil)
 	peersLogIf(r.Context(), gob.NewEncoder(w).Encode(result))
-}
-
-// GetLastDayTierStatsHandler - returns per-tier stats in the last 24hrs for this server
-func (s *peerRESTServer) GetLastDayTierStatsHandler(_ *grid.MSS) (*DailyAllTierStats, *grid.RemoteErr) {
-	if objAPI := newObjectLayerFn(); objAPI == nil || globalTransitionState == nil {
-		return nil, grid.NewRemoteErr(errServerNotInitialized)
-	}
-
-	result := globalTransitionState.getDailyAllTierStats()
-	return &result, nil
 }
 
 func (s *peerRESTServer) DriveSpeedTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -1377,7 +1354,6 @@ func registerPeerRESTHandlers(router *mux.Router, gm *grid.Manager) {
 	logger.FatalIf(getBandwidthRPC.Register(gm, server.GetBandwidth), "unable to register handler")
 	logger.FatalIf(getBucketStatsRPC.Register(gm, server.GetBucketStatsHandler), "unable to register handler")
 	logger.FatalIf(getCPUsHandler.Register(gm, server.GetCPUsHandler), "unable to register handler")
-	logger.FatalIf(getLastDayTierStatsRPC.Register(gm, server.GetLastDayTierStatsHandler), "unable to register handler")
 	logger.FatalIf(getLocksRPC.Register(gm, server.GetLocksHandler), "unable to register handler")
 	logger.FatalIf(getMemInfoRPC.Register(gm, server.GetMemInfoHandler), "unable to register handler")
 	logger.FatalIf(getMetacacheListingRPC.Register(gm, server.GetMetacacheListingHandler), "unable to register handler")

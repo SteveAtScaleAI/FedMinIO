@@ -75,7 +75,7 @@ Files deleted, startup blocks removed, update handlers stubbed, deps removed fro
 
 ---
 
-#### Phase 3: Cloud/Warm Tiering (Medium Risk — api-errors.go surgery, was Phase 2)
+#### ~~Phase 3: Cloud/Warm Tiering~~ ✅ COMPLETE
 **Delete:**
 ```
 cmd/warm-backend*.go (5 files)
