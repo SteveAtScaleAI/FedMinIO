@@ -47,7 +47,62 @@ MinIO has archived this repository. The goal is to maintain it as a purpose-buil
 #### ~~Phase 1: FTP / SFTP / Auto-Update~~ ✅ COMPLETE
 Files deleted, startup blocks removed, update handlers stubbed, deps removed from go.mod.
 
-#### Phase 2: Cloud/Warm Tiering (Medium Risk — api-errors.go surgery)
+#### Phase 2: Divorce from MinIO Dependency Ecosystem
+
+**Goal:** Make the build entirely self-contained and independent of MinIO-controlled repositories. A federal fork must not rely on external repos that could be taken down, relicensed, or changed without notice.
+
+**Step 1 — Vendor all dependencies (immediate, zero code changes)**
+```bash
+go mod vendor
+```
+This copies every dependency into `vendor/` in the repo. The build becomes fully air-gappable — no internet access, no module proxy, no github.com required. Add to Makefile `sanity` and `build` targets: use `-mod=vendor` flag.
+
+**Step 2 — Rename the module path**
+Change `go.mod` module declaration from `github.com/minio/minio` to a neutral path (e.g., `github.com/fedminio/server` or an org-controlled path). This requires a global find-and-replace of all internal import paths. Affects every `.go` file in the repo — use `sed` or a Go refactoring tool.
+
+**Step 3 — Incremental replacement of `github.com/minio/*` deps**
+
+Full audit of all 15 direct `minio/*` dependencies (see table below). Priority order: replace/inline easiest first to reduce supply-chain exposure.
+
+| Dependency | Files | Strategy | Effort |
+|---|---|---|---|
+| `madmin-go/v3` | 126 | Fork into repo as `internal/madmin/`; strip to types actually used post-phase-6 | High |
+| `pkg/v3` | 169 | Fork into repo as `internal/minio-pkg/`; trim unused subpackages | High |
+| `minio-go/v7` | 73 (but mostly warm-tier, removed in Phase 3) | After Phase 3, only `localtest/` needs it; keep for tests, replace with `aws-sdk-go` if needed | Low |
+| `console` | 3 | Removed entirely in Phase 7 | Done in Phase 7 |
+| `kms-go/kes` + `kms-go/kms` | 10 | Fork or vendor; KES is MinIO-specific — evaluate if needed for SCIF | Medium |
+| `sio` | 10 | Must keep/fork; implements DAREv2 format — changing breaks existing encrypted data | Fork |
+| `mux` | 40 | Replace with `github.com/gorilla/mux` (public, widely maintained) or stdlib `http.ServeMux` | Low |
+| `cli` | 4 | Replace with `github.com/urfave/cli/v2` (what minio/cli is based on) | Low |
+| `xxml` | 3 | Replace with stdlib `encoding/xml` | Low |
+| `highwayhash` | 6 | Replace with `github.com/cespare/xxhash/v2` (already in go.mod) | Low |
+| `dnscache` | 1 | Inline ~100 lines locally | Low |
+| `dperf` | 1 | Inline in `cmd/speedtest.go` or remove speedtest endpoint | Low |
+| `zipindex` | 2 | Inline with stdlib `archive/zip` | Low |
+| `csvparser` | 4 | Remove with S3 Select (Phase 7) | Done in Phase 7 |
+| `simdjson-go` | 9 | Remove with S3 Select (Phase 7) | Done in Phase 7 |
+
+**Indirect `minio/*` deps** (pulled transitively, no direct calls):
+`colorjson`, `crc64nvme`, `filepath`, `mc`, `md5-simd`, `websocket` — all eliminated once the packages that pull them are vendored/forked.
+
+**Recommended order within Phase 2:**
+1. `go mod vendor` — immediate air-gap capability
+2. Module rename — breaks all external references to the old path
+3. Quick replacements: `mux`, `cli`, `xxml`, `highwayhash`, `dnscache`, `dperf`, `zipindex`
+4. Fork `sio` into `internal/sio/`
+5. Fork `madmin-go` into `internal/madmin/` (do after Phase 6+ when many madmin types are no longer needed)
+6. Fork `pkg/v3` into `internal/minio-pkg/` (can be done incrementally, subpackage by subpackage)
+7. Evaluate `kms-go` — if SCIF deployments use an external KMS, keep; if all-local, stub it out
+
+**Verification:**
+```bash
+go build -mod=vendor ./...   # must succeed with no network access
+go test -mod=vendor ./localtest/ -v -timeout 120s
+```
+
+---
+
+#### Phase 3: Cloud/Warm Tiering (Medium Risk — api-errors.go surgery, was Phase 2)
 **Delete:**
 ```
 cmd/warm-backend*.go (5 files)
@@ -61,7 +116,7 @@ cmd/tier*.go (7 files including tier_gen*, tier-last-day-stats*, tier-sweeper*)
 
 **Deps removed:** `cloud.google.com/go/storage`, all `github.com/Azure/azure-sdk-for-go/sdk/*`, `google.golang.org/api`
 
-#### Phase 3: External Notifications (High Risk — config-current.go surgery)
+#### Phase 4: External Notifications (High Risk — config-current.go surgery, was Phase 3)
 **Delete:**
 ```
 internal/event/target/{amqp,elasticsearch,kafka,kafka_scram_client_contrib,mqtt,mysql,nats,nsq,postgresql,redis}.go
@@ -76,7 +131,7 @@ Keep: `internal/event/target/webhook.go` (no external broker dependency, used fo
 
 **Deps removed:** `github.com/IBM/sarama`, `github.com/rabbitmq/amqp091-go`, all `nats-io/*`, `github.com/elastic/go-elasticsearch/v7`, `github.com/go-sql-driver/mysql`, `github.com/lib/pq`, `github.com/gomodule/redigo`, `github.com/nsqio/go-nsq`, `github.com/eclipse/paho.mqtt.golang`, `github.com/xdg/scram`, `github.com/jcmturner/*`
 
-#### Phase 4: LDAP / OpenID / OPA (Highest Risk — IAM surgery)
+#### Phase 5: LDAP / OpenID / OPA (Highest Risk — IAM surgery, was Phase 4)
 **Delete:**
 ```
 internal/config/identity/ldap/   (entire directory)
@@ -96,7 +151,7 @@ cmd/admin-handlers-idp-openid.go
 
 **Deps removed:** `github.com/go-ldap/ldap/v3`, `github.com/coreos/go-oidc/v3`, `golang.org/x/oauth2`, all `github.com/lestrrat-go/*`, `github.com/go-jose/go-jose/v4`, `github.com/Azure/go-ntlmssp`
 
-#### Phase 5: Site Replication + Bucket Replication + Batch Jobs
+#### Phase 6: Site Replication + Bucket Replication + Batch Jobs (was Phase 5)
 **Important:** `internal/bucket/replication/` package is KEPT — 20+ core files import its `StatusType` constants. Only `cmd/` engine files are deleted.
 
 **Delete:**
@@ -115,7 +170,7 @@ cmd/batch-*.go (all variants)
 
 **Risk:** Getting `replication-stub.go` method signatures wrong causes type mismatch errors — read the generic `once.Singleton[T]` interface carefully before writing the stub.
 
-#### Phase 6: Lambda + S3 Select + Console UI + Call-home + Metrics
+#### Phase 7: Lambda + S3 Select + Console UI + Call-home + Metrics (was Phase 6)
 **Delete:**
 ```
 cmd/object-lambda-handlers.go, cmd/object-lambda-handlers_test.go
@@ -137,7 +192,7 @@ cmd/metrics*.go                    (all metrics files including metrics-v3-*.go,
 
 **Deps removed:** `github.com/minio/console`, all `go-openapi/*`, `github.com/minio/simdjson-go`, `github.com/fraugster/parquet-go`, `github.com/minio/csvparser`, `github.com/cosnicolaou/pbzip2`, `github.com/apache/thrift`, all `prometheus/*` packages
 
-#### Phase 7: Etcd DNS Federation (Optional)
+#### Phase 8: Etcd DNS Federation (Optional, was Phase 7)
 Low value for single-node SCIF. `globalDNSConfig` is already nil-guarded so runtime works without this. Defer unless binary size is a priority.
 
 **Delete:** `cmd/iam-etcd-store.go`, `cmd/etcd.go`, `internal/config/etcd/`
@@ -183,7 +238,7 @@ Create `internal/logger/target/localfile/localfile.go` — a `Target` that write
 | `cmd/config-current.go` | Imports 12+ packages being removed; central knot for phases 3-6 |
 | `cmd/globals.go` | Global vars for console, callhome, lambda, replication, tier, batch; edit lockstep with deletions |
 | `cmd/bucket-replication.go` | Defines `globalReplicationPool` used by 5 surviving files; stub must be created same commit as deletion |
-| `cmd/api-errors.go` | Imports Azure, Google, lambda; edit in phases 2 and 6 |
+| `cmd/api-errors.go` | Imports Azure, Google, lambda; edit in phases 3 and 7 |
 | `cmd/iam-store.go` | Contains `openid.DummyRoleARN`; verify sentinel value before replacing with literal |
 
 ## Verification
