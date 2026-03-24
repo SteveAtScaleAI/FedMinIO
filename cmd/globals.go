@@ -156,9 +156,6 @@ type serverCtxt struct {
 
 	RootUser, RootPwd string
 
-	FTP  []string
-	SFTP []string
-
 	MemLimit uint64
 
 	UserTimeout         time.Duration

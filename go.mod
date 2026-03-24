@@ -62,7 +62,6 @@ require (
 	github.com/minio/minio-go/v7 v7.0.91
 	github.com/minio/mux v1.9.2
 	github.com/minio/pkg/v3 v3.1.3
-	github.com/minio/selfupdate v0.6.0
 	github.com/minio/simdjson-go v0.4.5
 	github.com/minio/sio v0.4.1
 	github.com/minio/xxml v0.0.3
@@ -76,7 +75,6 @@ require (
 	github.com/philhofer/fwd v1.2.0
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/pkg/errors v0.9.1
-	github.com/pkg/sftp v1.13.9
 	github.com/pkg/xattr v0.4.10
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.2
@@ -96,7 +94,6 @@ require (
 	go.etcd.io/etcd/client/v3 v3.5.21
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
-	goftp.io/server/v2 v2.0.1
 	golang.org/x/crypto v0.37.0
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/sync v0.13.0
@@ -192,7 +189,6 @@ require (
 	github.com/jessevdk/go-flags v1.6.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/juju/ratelimit v1.0.2 // indirect
-	github.com/kr/fs v0.1.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
@@ -214,6 +210,7 @@ require (
 	github.com/minio/filepath v1.0.0 // indirect
 	github.com/minio/mc v0.0.0-20250313080218-cf909e1063a9 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
+	github.com/minio/selfupdate v0.6.0 // indirect
 	github.com/minio/websocket v1.6.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect

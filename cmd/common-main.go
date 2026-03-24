@@ -426,8 +426,6 @@ func buildServerCtxt(ctx *cli.Context, ctxt *serverCtxt) (err error) {
 		ctxt.MemLimit = memAvailable
 	}
 
-	ctxt.FTP = ctx.StringSlice("ftp")
-	ctxt.SFTP = ctx.StringSlice("sftp")
 	ctxt.Interface = ctx.String("interface")
 	ctxt.UserTimeout = ctx.Duration("conn-user-timeout")
 	ctxt.SendBufSize = ctx.Int("send-buf-size")

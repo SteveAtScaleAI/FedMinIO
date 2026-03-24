@@ -230,6 +230,27 @@ install: build ## builds minio and installs it to $GOPATH/bin.
 	@mkdir -p $(GOPATH)/bin && cp -af $(PWD)/minio $(GOPATH)/bin/minio
 	@echo "Installation successful. To learn more, try \"minio --help\"."
 
+## -----------------------------------------------------------------------
+## FedMinIO targets
+## -----------------------------------------------------------------------
+
+sanity: ## fast build + internal unit tests (no linters, no external deps)
+	@echo "→ Compiling..."
+	@CGO_ENABLED=0 go build ./... && echo "  Build OK"
+	@echo "→ Running internal unit tests (short mode — skips slow distributed tests)..."
+	@CGO_ENABLED=0 go test ./internal/... -short -timeout 120s -count=1 -tags kqueue && echo "  Internal tests OK"
+
+test-local: ## build binary and run end-to-end S3 integration tests (localtest/)
+	@echo "→ Building minio binary for integration tests..."
+	@CGO_ENABLED=0 go build -o /tmp/minio-fedtest . && echo "  Binary built: /tmp/minio-fedtest"
+	@echo "→ Running localtest integration suite..."
+	@MINIO_TEST_BINARY=/tmp/minio-fedtest go test ./localtest/ -v -timeout 120s
+
+fips-build: checks ## build FIPS-mode binary using Go BoringCrypto (requires CGO)
+	@echo "Building FIPS-mode minio binary to './minio-fips'"
+	@GOEXPERIMENT=boringcrypto CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/minio-fips 1>/dev/null
+	@echo "FIPS build complete: ./minio-fips"
+
 clean: ## cleanup all generated assets
 	@echo "Cleaning up all the generated files"
 	@find . -name '*.test' | xargs rm -fv

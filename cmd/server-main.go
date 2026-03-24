@@ -137,14 +137,6 @@ var ServerFlags = []cli.Flag{
 		Value:  2048,
 		EnvVar: "MINIO_MAX_IDLE_CONNS_PER_HOST",
 	},
-	cli.StringSliceFlag{
-		Name:  "ftp",
-		Usage: "enable and configure an FTP(Secure) server",
-	},
-	cli.StringSliceFlag{
-		Name:  "sftp",
-		Usage: "enable and configure an SFTP server",
-	},
 	cli.StringFlag{
 		Name:   "crossdomain-xml",
 		Usage:  "provide a custom crossdomain-xml configuration to report at http://endpoint/crossdomain.xml",
@@ -285,19 +277,6 @@ func configCommonToSrvCtx(cf config.ServerConfigCommon, ctxt *serverCtxt) {
 		ctxt.certsDirSet = true
 	}
 
-	if cf.Options.FTP.Address != "" {
-		ctxt.FTP = append(ctxt.FTP, fmt.Sprintf("address=%s", cf.Options.FTP.Address))
-	}
-	if cf.Options.FTP.PassivePortRange != "" {
-		ctxt.FTP = append(ctxt.FTP, fmt.Sprintf("passive-port-range=%s", cf.Options.FTP.PassivePortRange))
-	}
-
-	if cf.Options.SFTP.Address != "" {
-		ctxt.SFTP = append(ctxt.SFTP, fmt.Sprintf("address=%s", cf.Options.SFTP.Address))
-	}
-	if cf.Options.SFTP.SSHPrivateKey != "" {
-		ctxt.SFTP = append(ctxt.SFTP, fmt.Sprintf("ssh-private-key=%s", cf.Options.SFTP.SSHPrivateKey))
-	}
 }
 
 func mergeServerCtxtFromConfigFile(configFile string, ctxt *serverCtxt) error {
@@ -851,15 +830,7 @@ func serverMain(ctx *cli.Context) {
 		getCert = globalTLSCerts.GetCertificate
 	}
 
-	// Check for updates in non-blocking manner.
-	go func() {
-		if !globalServerCtxt.Quiet && !globalInplaceUpdateDisabled {
-			// Check for new updates from dl.min.io.
-			bootstrapTrace("checkUpdate", func() {
-				checkUpdate(getMinioMode())
-			})
-		}
-	}()
+	// Update checks disabled — FedMinIO is maintained separately for air-gapped environments.
 
 	// Set system resources to maximum.
 	bootstrapTrace("setMaxResources", func() {
@@ -1022,19 +993,6 @@ func serverMain(ctx *cli.Context) {
 			})
 		}
 
-		// if we see FTP args, start FTP if possible
-		if len(globalServerCtxt.FTP) > 0 {
-			bootstrapTrace("go startFTPServer", func() {
-				go startFTPServer(globalServerCtxt.FTP)
-			})
-		}
-
-		// If we see SFTP args, start SFTP if possible
-		if len(globalServerCtxt.SFTP) > 0 {
-			bootstrapTrace("go startSFTPServer", func() {
-				go startSFTPServer(globalServerCtxt.SFTP)
-			})
-		}
 	}()
 
 	go func() {

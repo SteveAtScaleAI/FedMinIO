@@ -19,7 +19,6 @@ package cmd
 
 import (
 	"bufio"
-	"crypto"
 	"crypto/tls"
 	"encoding/hex"
 	"errors"
@@ -28,7 +27,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -40,7 +38,6 @@ import (
 	"github.com/minio/minio/internal/logger"
 	"github.com/minio/pkg/v3/env"
 	xnet "github.com/minio/pkg/v3/net"
-	"github.com/minio/selfupdate"
 	gopsutilcpu "github.com/shirou/gopsutil/v3/cpu"
 	"github.com/valyala/bytebufferpool"
 )
@@ -555,96 +552,11 @@ func downloadBinary(u *url.URL, mode string) (binCompressed []byte, bin []byte, 
 	return bc.Bytes(), b.Bytes(), nil
 }
 
-const (
-	// Update this whenever the official minisign pubkey is rotated.
-	defaultMinisignPubkey = "RWTx5Zr1tiHQLwG9keckT0c45M3AGeHD6IvimQHpyRywVWGbP1aVSGav"
-)
-
-func verifyBinary(u *url.URL, sha256Sum []byte, releaseInfo, mode string, reader io.Reader) (err error) {
-	if !updateInProgress.CompareAndSwap(0, 1) {
-		return errors.New("update already in progress")
-	}
-	defer updateInProgress.Store(0)
-
-	transport := getUpdateTransport(30 * time.Second)
-	opts := selfupdate.Options{
-		Hash:     crypto.SHA256,
-		Checksum: sha256Sum,
-	}
-
-	if err := opts.CheckPermissions(); err != nil {
-		return AdminError{
-			Code:       AdminUpdateApplyFailure,
-			Message:    fmt.Sprintf("server update failed with: %s, do not restart the servers yet", err),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-
-	minisignPubkey := env.Get(envMinisignPubKey, defaultMinisignPubkey)
-	if minisignPubkey != "" {
-		v := selfupdate.NewVerifier()
-		u.Path = path.Dir(u.Path) + slashSeparator + releaseInfo + ".minisig"
-		if err = v.LoadFromURL(u.String(), minisignPubkey, transport); err != nil {
-			return AdminError{
-				Code:       AdminUpdateApplyFailure,
-				Message:    fmt.Sprintf("signature loading failed for %v with %v", u, err),
-				StatusCode: http.StatusInternalServerError,
-			}
-		}
-		opts.Verifier = v
-	}
-
-	if err = selfupdate.PrepareAndCheckBinary(reader, opts); err != nil {
-		var pathErr *os.PathError
-		if errors.As(err, &pathErr) {
-			return AdminError{
-				Code: AdminUpdateApplyFailure,
-				Message: fmt.Sprintf("Unable to update the binary at %s: %v",
-					filepath.Dir(pathErr.Path), pathErr.Err),
-				StatusCode: http.StatusForbidden,
-			}
-		}
-		return AdminError{
-			Code:       AdminUpdateApplyFailure,
-			Message:    err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-
-	return nil
+// verifyBinary and commitBinary are disabled in FedMinIO (air-gapped environment).
+func verifyBinary(_ *url.URL, _ []byte, _, _ string, _ io.Reader) error {
+	return errors.New("binary updates are disabled in FedMinIO")
 }
 
-func commitBinary() (err error) {
-	if !updateInProgress.CompareAndSwap(0, 1) {
-		return errors.New("update already in progress")
-	}
-	defer updateInProgress.Store(0)
-
-	opts := selfupdate.Options{}
-
-	if err = selfupdate.CommitBinary(opts); err != nil {
-		if rerr := selfupdate.RollbackError(err); rerr != nil {
-			return AdminError{
-				Code:       AdminUpdateApplyFailure,
-				Message:    fmt.Sprintf("Failed to rollback from bad update: %v", rerr),
-				StatusCode: http.StatusInternalServerError,
-			}
-		}
-		var pathErr *os.PathError
-		if errors.As(err, &pathErr) {
-			return AdminError{
-				Code: AdminUpdateApplyFailure,
-				Message: fmt.Sprintf("Unable to update the binary at %s: %v",
-					filepath.Dir(pathErr.Path), pathErr.Err),
-				StatusCode: http.StatusForbidden,
-			}
-		}
-		return AdminError{
-			Code:       AdminUpdateApplyFailure,
-			Message:    err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-
-	return nil
+func commitBinary() error {
+	return errors.New("binary updates are disabled in FedMinIO")
 }
