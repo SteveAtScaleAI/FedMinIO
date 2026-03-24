@@ -32,12 +32,12 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v3"
-	"github.com/minio/minio/internal/auth"
-	"github.com/minio/minio/internal/config/identity/openid"
-	"github.com/minio/minio/internal/hash/sha256"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
-	"github.com/minio/mux"
+	"github.com/fedminio/server/internal/auth"
+	"github.com/fedminio/server/internal/config/identity/openid"
+	"github.com/fedminio/server/internal/hash/sha256"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/policy"
 	"github.com/minio/pkg/v3/wildcard"
 )

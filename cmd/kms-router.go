@@ -22,8 +22,8 @@ import (
 
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/klauspost/compress/gzip"
-	"github.com/minio/minio/internal/logger"
-	"github.com/minio/mux"
+	"github.com/fedminio/server/internal/logger"
+	"github.com/gorilla/mux"
 )
 
 const (

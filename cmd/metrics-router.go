@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/minio/mux"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/env"
 )
 

@@ -25,9 +25,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/minio/minio/internal/config"
-	"github.com/minio/minio/internal/mcontext"
-	"github.com/minio/mux"
+	"github.com/fedminio/server/internal/config"
+	"github.com/fedminio/server/internal/mcontext"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/env"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

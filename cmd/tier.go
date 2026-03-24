@@ -33,9 +33,9 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v3"
-	"github.com/minio/minio/internal/crypto"
-	"github.com/minio/minio/internal/hash"
-	"github.com/minio/minio/internal/kms"
+	"github.com/fedminio/server/internal/crypto"
+	"github.com/fedminio/server/internal/hash"
+	"github.com/fedminio/server/internal/kms"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

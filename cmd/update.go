@@ -34,8 +34,8 @@ import (
 	"time"
 
 	"github.com/klauspost/compress/zstd"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
 	"github.com/minio/pkg/v3/env"
 	xnet "github.com/minio/pkg/v3/net"
 	gopsutilcpu "github.com/shirou/gopsutil/v3/cpu"

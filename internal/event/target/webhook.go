@@ -33,11 +33,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/minio/internal/event"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
-	"github.com/minio/minio/internal/once"
-	"github.com/minio/minio/internal/store"
+	"github.com/fedminio/server/internal/event"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
+	"github.com/fedminio/server/internal/once"
+	"github.com/fedminio/server/internal/store"
 	"github.com/minio/pkg/v3/certs"
 	xnet "github.com/minio/pkg/v3/net"
 )

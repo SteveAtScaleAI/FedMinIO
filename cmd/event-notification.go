@@ -25,10 +25,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/minio/minio/internal/crypto"
-	"github.com/minio/minio/internal/event"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/pubsub"
+	"github.com/fedminio/server/internal/crypto"
+	"github.com/fedminio/server/internal/event"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/pubsub"
 	"github.com/minio/pkg/v3/policy"
 )
 

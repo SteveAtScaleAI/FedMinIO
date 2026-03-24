@@ -22,7 +22,7 @@ import (
 	"context"
 	"testing"
 
-	xhttp "github.com/minio/minio/internal/http"
+	xhttp "github.com/fedminio/server/internal/http"
 )
 
 // TestPutObjectConditionalWithReadQuorumFailure tests that conditional

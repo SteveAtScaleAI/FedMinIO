@@ -29,14 +29,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio/internal/amztime"
-	"github.com/minio/minio/internal/crypto"
-	"github.com/minio/minio/internal/handlers"
-	"github.com/minio/minio/internal/hash"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
+	"github.com/fedminio/server/internal/amztime"
+	"github.com/fedminio/server/internal/crypto"
+	"github.com/fedminio/server/internal/handlers"
+	"github.com/fedminio/server/internal/hash"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
 	"github.com/minio/pkg/v3/policy"
-	xxml "github.com/minio/xxml"
+	xxml "encoding/xml"
 )
 
 const (

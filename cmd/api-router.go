@@ -22,8 +22,8 @@ import (
 	"net/http"
 
 	consoleapi "github.com/minio/console/api"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/mux"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/wildcard"
 	"github.com/rs/cors"
 )

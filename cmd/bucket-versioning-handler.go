@@ -25,9 +25,9 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v3"
-	"github.com/minio/minio/internal/bucket/versioning"
-	"github.com/minio/minio/internal/logger"
-	"github.com/minio/mux"
+	"github.com/fedminio/server/internal/bucket/versioning"
+	"github.com/fedminio/server/internal/logger"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/policy"
 )
 

@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
 )
 
 var printEndpointError = func() func(Endpoint, error, bool) {

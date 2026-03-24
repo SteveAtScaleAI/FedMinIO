@@ -47,58 +47,31 @@ MinIO has archived this repository. The goal is to maintain it as a purpose-buil
 #### ~~Phase 1: FTP / SFTP / Auto-Update~~ ✅ COMPLETE
 Files deleted, startup blocks removed, update handlers stubbed, deps removed from go.mod.
 
-#### Phase 2: Divorce from MinIO Dependency Ecosystem
+#### ~~Phase 2: Divorce from MinIO Dependency Ecosystem~~ ✅ COMPLETE
 
-**Goal:** Make the build entirely self-contained and independent of MinIO-controlled repositories. A federal fork must not rely on external repos that could be taken down, relicensed, or changed without notice.
+**Completed:**
+- Module path renamed `github.com/minio/minio` → `github.com/fedminio/server` (377 .go files updated)
+- `github.com/minio/mux` → `github.com/gorilla/mux` (40 files; gorilla was already an indirect dep)
+- `github.com/minio/xxml` → `encoding/xml` stdlib alias (2 files)
+- All dependencies vendored into `vendor/` (127MB; air-gap capable)
+- Makefile `sanity`, `test-local`, `fips-build` targets updated to `-mod=vendor`
+- `go mod tidy` run; build clean; all 7 localtest cases pass
 
-**Step 1 — Vendor all dependencies (immediate, zero code changes)**
-```bash
-go mod vendor
-```
-This copies every dependency into `vendor/` in the repo. The build becomes fully air-gappable — no internet access, no module proxy, no github.com required. Add to Makefile `sanity` and `build` targets: use `-mod=vendor` flag.
+**Remaining `github.com/minio/*` deps** (deferred — captured in vendor/ for now):
 
-**Step 2 — Rename the module path**
-Change `go.mod` module declaration from `github.com/minio/minio` to a neutral path (e.g., `github.com/fedminio/server` or an org-controlled path). This requires a global find-and-replace of all internal import paths. Affects every `.go` file in the repo — use `sed` or a Go refactoring tool.
-
-**Step 3 — Incremental replacement of `github.com/minio/*` deps**
-
-Full audit of all 15 direct `minio/*` dependencies (see table below). Priority order: replace/inline easiest first to reduce supply-chain exposure.
-
-| Dependency | Files | Strategy | Effort |
-|---|---|---|---|
-| `madmin-go/v3` | 126 | Fork into repo as `internal/madmin/`; strip to types actually used post-phase-6 | High |
-| `pkg/v3` | 169 | Fork into repo as `internal/minio-pkg/`; trim unused subpackages | High |
-| `minio-go/v7` | 73 (but mostly warm-tier, removed in Phase 3) | After Phase 3, only `localtest/` needs it; keep for tests, replace with `aws-sdk-go` if needed | Low |
-| `console` | 3 | Removed entirely in Phase 7 | Done in Phase 7 |
-| `kms-go/kes` + `kms-go/kms` | 10 | Fork or vendor; KES is MinIO-specific — evaluate if needed for SCIF | Medium |
-| `sio` | 10 | Must keep/fork; implements DAREv2 format — changing breaks existing encrypted data | Fork |
-| `mux` | 40 | Replace with `github.com/gorilla/mux` (public, widely maintained) or stdlib `http.ServeMux` | Low |
-| `cli` | 4 | Replace with `github.com/urfave/cli/v2` (what minio/cli is based on) | Low |
-| `xxml` | 3 | Replace with stdlib `encoding/xml` | Low |
-| `highwayhash` | 6 | Replace with `github.com/cespare/xxhash/v2` (already in go.mod) | Low |
-| `dnscache` | 1 | Inline ~100 lines locally | Low |
-| `dperf` | 1 | Inline in `cmd/speedtest.go` or remove speedtest endpoint | Low |
-| `zipindex` | 2 | Inline with stdlib `archive/zip` | Low |
-| `csvparser` | 4 | Remove with S3 Select (Phase 7) | Done in Phase 7 |
-| `simdjson-go` | 9 | Remove with S3 Select (Phase 7) | Done in Phase 7 |
-
-**Indirect `minio/*` deps** (pulled transitively, no direct calls):
-`colorjson`, `crc64nvme`, `filepath`, `mc`, `md5-simd`, `websocket` — all eliminated once the packages that pull them are vendored/forked.
-
-**Recommended order within Phase 2:**
-1. `go mod vendor` — immediate air-gap capability
-2. Module rename — breaks all external references to the old path
-3. Quick replacements: `mux`, `cli`, `xxml`, `highwayhash`, `dnscache`, `dperf`, `zipindex`
-4. Fork `sio` into `internal/sio/`
-5. Fork `madmin-go` into `internal/madmin/` (do after Phase 6+ when many madmin types are no longer needed)
-6. Fork `pkg/v3` into `internal/minio-pkg/` (can be done incrementally, subpackage by subpackage)
-7. Evaluate `kms-go` — if SCIF deployments use an external KMS, keep; if all-local, stub it out
-
-**Verification:**
-```bash
-go build -mod=vendor ./...   # must succeed with no network access
-go test -mod=vendor ./localtest/ -v -timeout 120s
-```
+| Dependency | Strategy | When |
+|---|---|---|
+| `minio-go/v7` | Keep for `localtest/`; after Phase 3 only test code needs it | Phase 3+ |
+| `madmin-go/v3` | Fork into `internal/madmin/` after Phase 6 strips most usage | Phase 6 |
+| `pkg/v3` | Fork into `internal/minio-pkg/` incrementally | Phase 6+ |
+| `kms-go` | Evaluate: stub if SCIF is all-local, keep if external KMS needed | Phase 5 |
+| `sio` | Must fork/keep; implements DAREv2 encrypted data format | Phase 6 |
+| `cli` | Replace with `github.com/urfave/cli/v2` (parent fork, 6 files) | Phase 6 |
+| `highwayhash` | Skip algorithm swap (breaks existing data); fork or keep | Phase 6 |
+| `dnscache` | Inline ~100 lines (1 file) | Phase 6 |
+| `dperf` | Inline in `cmd/speedtest.go` or remove speedtest (1 file) | Phase 6 |
+| `zipindex` | Removed with S3 Select | Phase 7 |
+| `console`, `csvparser`, `simdjson-go` | Removed with console/S3 Select | Phase 7 |
 
 ---
 

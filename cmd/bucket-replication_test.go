@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v3"
-	"github.com/minio/minio/internal/bucket/replication"
-	xhttp "github.com/minio/minio/internal/http"
+	"github.com/fedminio/server/internal/bucket/replication"
+	xhttp "github.com/fedminio/server/internal/http"
 )
 
 var configs = []replication.Config{

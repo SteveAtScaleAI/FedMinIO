@@ -236,19 +236,19 @@ install: build ## builds minio and installs it to $GOPATH/bin.
 
 sanity: ## fast build + internal unit tests (no linters, no external deps)
 	@echo "→ Compiling..."
-	@CGO_ENABLED=0 go build ./... && echo "  Build OK"
+	@CGO_ENABLED=0 go build -mod=vendor ./... && echo "  Build OK"
 	@echo "→ Running internal unit tests (short mode — skips slow distributed tests)..."
-	@CGO_ENABLED=0 go test ./internal/... -short -timeout 120s -count=1 -tags kqueue && echo "  Internal tests OK"
+	@CGO_ENABLED=0 go test -mod=vendor ./internal/... -short -timeout 120s -count=1 -tags kqueue && echo "  Internal tests OK"
 
 test-local: ## build binary and run end-to-end S3 integration tests (localtest/)
 	@echo "→ Building minio binary for integration tests..."
-	@CGO_ENABLED=0 go build -o /tmp/minio-fedtest . && echo "  Binary built: /tmp/minio-fedtest"
+	@CGO_ENABLED=0 go build -mod=vendor -o /tmp/minio-fedtest . && echo "  Binary built: /tmp/minio-fedtest"
 	@echo "→ Running localtest integration suite..."
-	@MINIO_TEST_BINARY=/tmp/minio-fedtest go test ./localtest/ -v -timeout 120s
+	@MINIO_TEST_BINARY=/tmp/minio-fedtest go test -mod=vendor ./localtest/ -v -timeout 120s
 
 fips-build: checks ## build FIPS-mode binary using Go BoringCrypto (requires CGO)
 	@echo "Building FIPS-mode minio binary to './minio-fips'"
-	@GOEXPERIMENT=boringcrypto CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/minio-fips 1>/dev/null
+	@GOEXPERIMENT=boringcrypto CGO_ENABLED=1 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -mod=vendor -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/minio-fips 1>/dev/null
 	@echo "FIPS build complete: ./minio-fips"
 
 clean: ## cleanup all generated assets

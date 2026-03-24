@@ -30,9 +30,9 @@ import (
 	"time"
 
 	"github.com/minio/minio-go/v7/pkg/tags"
-	"github.com/minio/minio/internal/crypto"
-	xhttp "github.com/minio/minio/internal/http"
-	xxml "github.com/minio/xxml"
+	"github.com/fedminio/server/internal/crypto"
+	xhttp "github.com/fedminio/server/internal/http"
+	xxml "encoding/xml"
 )
 
 // Returns a hexadecimal representation of time at the

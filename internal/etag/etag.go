@@ -117,8 +117,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/minio/minio/internal/hash/sha256"
-	xhttp "github.com/minio/minio/internal/http"
+	"github.com/fedminio/server/internal/hash/sha256"
+	xhttp "github.com/fedminio/server/internal/http"
 	"github.com/minio/sio"
 )
 

@@ -25,8 +25,8 @@ import (
 
 	xnet "github.com/minio/pkg/v3/net"
 
-	"github.com/minio/minio/internal/color"
-	"github.com/minio/minio/internal/logger"
+	"github.com/fedminio/server/internal/color"
+	"github.com/fedminio/server/internal/logger"
 )
 
 // generates format string depending on the string length and padding.

@@ -38,9 +38,9 @@ import (
 
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 	"github.com/minio/minio-go/v7/pkg/set"
-	"github.com/minio/minio/internal/auth"
-	"github.com/minio/minio/internal/hash/sha256"
-	xhttp "github.com/minio/minio/internal/http"
+	"github.com/fedminio/server/internal/auth"
+	"github.com/fedminio/server/internal/hash/sha256"
+	xhttp "github.com/fedminio/server/internal/http"
 )
 
 // AWS Signature Version '4' constants.

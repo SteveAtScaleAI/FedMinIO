@@ -23,7 +23,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/minio/minio/internal/config"
+	"github.com/fedminio/server/internal/config"
 	"github.com/minio/pkg/v3/env"
 	xnet "github.com/minio/pkg/v3/net"
 	"github.com/minio/pkg/v3/policy"

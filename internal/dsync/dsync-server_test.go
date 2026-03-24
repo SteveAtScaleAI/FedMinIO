@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/minio/mux"
+	"github.com/gorilla/mux"
 )
 
 const numberOfNodes = 5

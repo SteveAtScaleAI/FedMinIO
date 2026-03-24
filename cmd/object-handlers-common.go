@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/minio/internal/amztime"
-	"github.com/minio/minio/internal/bucket/lifecycle"
-	"github.com/minio/minio/internal/event"
-	"github.com/minio/minio/internal/hash"
-	xhttp "github.com/minio/minio/internal/http"
+	"github.com/fedminio/server/internal/amztime"
+	"github.com/fedminio/server/internal/bucket/lifecycle"
+	"github.com/fedminio/server/internal/event"
+	"github.com/fedminio/server/internal/hash"
+	xhttp "github.com/fedminio/server/internal/http"
 )
 
 var etagRegex = regexp.MustCompile("\"*?([^\"]*?)\"*?$")

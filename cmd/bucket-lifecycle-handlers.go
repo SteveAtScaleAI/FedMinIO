@@ -23,10 +23,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/minio/minio/internal/bucket/lifecycle"
-	xhttp "github.com/minio/minio/internal/http"
-	"github.com/minio/minio/internal/logger"
-	"github.com/minio/mux"
+	"github.com/fedminio/server/internal/bucket/lifecycle"
+	xhttp "github.com/fedminio/server/internal/http"
+	"github.com/fedminio/server/internal/logger"
+	"github.com/gorilla/mux"
 	"github.com/minio/pkg/v3/policy"
 )
 
